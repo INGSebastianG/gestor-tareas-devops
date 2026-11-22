@@ -31,7 +31,7 @@ No necesitas Node.js ni PostgreSQL instalados en tu computador: todo corre dentr
 ## Cómo levantarlo
 
 ```bash
-git clone https://github.com/USUARIO/gestor-tareas-devops.git
+git clone https://github.com/malejangel/gestor-tareas-devops.git
 cd gestor-tareas-devops
 ```
 
