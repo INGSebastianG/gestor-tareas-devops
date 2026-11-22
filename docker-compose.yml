@@ -1,0 +1,54 @@
+# Define los DOS contenedores y la RED que los une.
+#   app -> la API (se construye con nuestro Dockerfile)
+#   db  -> PostgreSQL (imagen oficial, no necesita Dockerfile)
+# Las credenciales NO están aquí: se leen de variables de entorno
+# (archivo .env en tu equipo, o credenciales de Jenkins en la semana 5).
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:?Falta DB_USER, revisa tu archivo .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD, revisa tu archivo .env}
+      POSTGRES_DB: ${DB_NAME:?Falta DB_NAME, revisa tu archivo .env}
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - datos_db:/var/lib/postgresql/data
+    networks:
+      - red_tareas
+    # La base solo se considera lista cuando acepta conexiones de verdad.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: ./app
+    environment:
+      DB_HOST: db          # <- nombre del servicio, no una IP
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      PORT: 3000
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    networks:
+      - red_tareas
+    # ORDEN DE ARRANQUE: la app no arranca hasta que la base esté "healthy".
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/salud || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+networks:
+  red_tareas:
+    driver: bridge
+
+volumes:
+  datos_db:
